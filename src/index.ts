@@ -87,6 +87,7 @@ async function proxyRequest(
   const headers = new Headers(req.headers);
   headers.set("X-Forwarded-For", "127.0.0.1");
   headers.set("X-Lab-Name", lab.name);
+  headers.set("X-Lab-Base-Path", `/${lab.name}`);
 
   let body: ArrayBuffer | undefined;
   if (req.method !== "GET" && req.method !== "HEAD") {
