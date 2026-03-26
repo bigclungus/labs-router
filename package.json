@@ -1,0 +1,7 @@
+{
+  "name": "labs-router",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "bun run src/index.ts"
+  }
+}
