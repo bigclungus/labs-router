@@ -143,7 +143,7 @@ const server = Bun.serve({
     }
 
     try {
-      return await proxyRequest(req, lab, subpath || "/");
+      return await proxyRequest(req, lab, (subpath || "/") + url.search);
     } catch (err) {
       console.error(`Proxy error for lab ${labName}: ${err}`);
       return new Response(
