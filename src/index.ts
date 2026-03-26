@@ -106,7 +106,7 @@ async function proxyRequest(
   });
 }
 
-const server = Bun.serve({
+const _server = Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
