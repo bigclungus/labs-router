@@ -81,7 +81,7 @@ function renderIndex(labs: LabManifest[]): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>labs.clung.us</title>
   <style>
-    body { font-family: monospace; max-width: 720px; margin: 60px auto; padding: 0 20px; background: #0d0d0d; color: #e0e0e0; }
+    body { font-family: monospace; max-width: 720px; margin: 0 auto; padding: 48px 20px 20px; background: #0d0d0d; color: #e0e0e0; }
     h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
     .subtitle { color: #666; margin-bottom: 2rem; font-size: 0.9rem; }
     .lab { border: 1px solid #222; padding: 14px 18px; margin-bottom: 12px; border-radius: 4px; }
