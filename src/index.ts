@@ -12,50 +12,11 @@ interface LabManifest {
   status: string;
 }
 
-// Nav bar injected into every HTML page served by the router (index, error pages, and proxied labs)
-const NAV_HTML = `<nav id="labs-nav" style="
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  gap: 0;
-  background: #111118;
-  border-bottom: 1px solid #2a2a3a;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 12px;
-  height: 32px;
-  padding: 0;
-  user-select: none;
-">
-  <a href="https://clung.us" style="
-    display: flex;
-    align-items: center;
-    padding: 0 14px;
-    height: 100%;
-    color: #aaa;
-    text-decoration: none;
-    border-right: 1px solid #2a2a3a;
-    white-space: nowrap;
-    transition: color 0.15s;
-  " onmouseover="this.style.color='#e0e0e0'" onmouseout="this.style.color='#aaa'">clung.us</a>
-  <span style="padding: 0 10px; color: #3a3a4a;">/</span>
-  <a href="https://labs.clung.us" style="
-    display: flex;
-    align-items: center;
-    padding: 0 4px;
-    height: 100%;
-    color: #7eb8f7;
-    text-decoration: none;
-    font-weight: 600;
-    white-space: nowrap;
-    transition: color 0.15s;
-  " onmouseover="this.style.color='#a8d0ff'" onmouseout="this.style.color='#7eb8f7'">labs</a>
-  <span style="margin-left: auto; padding: 0 14px; color: #3a3a4a; font-size: 11px;">labs.clung.us</span>
-</nav>
-<style>body { padding-top: 32px !important; }</style>`;
+// Nav injected into every HTML page served by the router.
+// Uses the EXACT same sitenav.css + sitenav.js as clung.us — loaded directly from the origin.
+// When the clung.us nav changes, labs automatically pick it up with no per-lab edits needed.
+const NAV_INJECT = `<link rel="stylesheet" href="https://clung.us/sitenav.css">
+<script src="https://clung.us/sitenav.js" defer></script>`;
 
 async function discoverLabs(): Promise<LabManifest[]> {
   const labs: LabManifest[] = [];
@@ -85,12 +46,18 @@ async function discoverLabs(): Promise<LabManifest[]> {
 }
 
 function injectNav(html: string): string {
-  // Insert nav after <body> tag if present, otherwise prepend to document
+  // Inject the clung.us sitenav assets into <head> so they load before paint.
+  // sitenav.js builds and inserts the <nav> element itself at DOMContentLoaded.
+  const headClose = html.match(/<\/head>/i);
+  if (headClose) {
+    return html.replace(headClose[0], NAV_INJECT + "\n" + headClose[0]);
+  }
+  // No <head> — fall back to prepending before <body>
   const bodyTag = html.match(/<body[^>]*>/i);
   if (bodyTag) {
-    return html.replace(bodyTag[0], bodyTag[0] + "\n" + NAV_HTML);
+    return html.replace(bodyTag[0], NAV_INJECT + "\n" + bodyTag[0]);
   }
-  return NAV_HTML + html;
+  return NAV_INJECT + html;
 }
 
 function renderIndex(labs: LabManifest[]): string {
