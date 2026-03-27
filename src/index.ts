@@ -12,6 +12,51 @@ interface LabManifest {
   status: string;
 }
 
+// Nav bar injected into every HTML page served by the router (index, error pages, and proxied labs)
+const NAV_HTML = `<nav id="labs-nav" style="
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #111118;
+  border-bottom: 1px solid #2a2a3a;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  height: 32px;
+  padding: 0;
+  user-select: none;
+">
+  <a href="https://clung.us" style="
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    height: 100%;
+    color: #aaa;
+    text-decoration: none;
+    border-right: 1px solid #2a2a3a;
+    white-space: nowrap;
+    transition: color 0.15s;
+  " onmouseover="this.style.color='#e0e0e0'" onmouseout="this.style.color='#aaa'">clung.us</a>
+  <span style="padding: 0 10px; color: #3a3a4a;">/</span>
+  <a href="https://labs.clung.us" style="
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    height: 100%;
+    color: #7eb8f7;
+    text-decoration: none;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: color 0.15s;
+  " onmouseover="this.style.color='#a8d0ff'" onmouseout="this.style.color='#7eb8f7'">labs</a>
+  <span style="margin-left: auto; padding: 0 14px; color: #3a3a4a; font-size: 11px;">labs.clung.us</span>
+</nav>
+<style>body { padding-top: 32px !important; }</style>`;
+
 async function discoverLabs(): Promise<LabManifest[]> {
   const labs: LabManifest[] = [];
 
@@ -39,6 +84,15 @@ async function discoverLabs(): Promise<LabManifest[]> {
   return labs;
 }
 
+function injectNav(html: string): string {
+  // Insert nav after <body> tag if present, otherwise prepend to document
+  const bodyTag = html.match(/<body[^>]*>/i);
+  if (bodyTag) {
+    return html.replace(bodyTag[0], bodyTag[0] + "\n" + NAV_HTML);
+  }
+  return NAV_HTML + html;
+}
+
 function renderIndex(labs: LabManifest[]): string {
   const items =
     labs.length === 0
@@ -53,7 +107,7 @@ function renderIndex(labs: LabManifest[]): string {
           )
           .join("\n");
 
-  return `<!DOCTYPE html>
+  return injectNav(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -74,7 +128,7 @@ function renderIndex(labs: LabManifest[]): string {
   <p class="subtitle">active experiments — ${labs.length} running</p>
   ${items}
 </body>
-</html>`;
+</html>`);
 }
 
 async function proxyRequest(
@@ -100,9 +154,29 @@ async function proxyRequest(
     body: body,
   });
 
-  return new Response(upstream.body, {
+  const contentType = upstream.headers.get("content-type") ?? "";
+  const isHtml = contentType.includes("text/html");
+
+  if (!isHtml) {
+    // Non-HTML responses pass through untouched
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: upstream.headers,
+    });
+  }
+
+  // Inject nav into HTML responses
+  const html = await upstream.text();
+  const modified = injectNav(html);
+
+  const responseHeaders = new Headers(upstream.headers);
+  responseHeaders.set("content-type", "text/html; charset=utf-8");
+  // Remove content-length since we've modified the body
+  responseHeaders.delete("content-length");
+
+  return new Response(modified, {
     status: upstream.status,
-    headers: upstream.headers,
+    headers: responseHeaders,
   });
 }
 
@@ -130,11 +204,11 @@ const _server = Bun.serve({
 
     if (!lab) {
       return new Response(
-        `<!DOCTYPE html><html><body style="font-family:monospace;padding:40px;background:#0d0d0d;color:#e0e0e0">
+        injectNav(`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:monospace;padding:40px;background:#0d0d0d;color:#e0e0e0">
           <h2>404 — lab not found</h2>
           <p>No active lab named <code>${labName}</code>.</p>
           <p><a href="/" style="color:#7eb8f7">← back to index</a></p>
-        </body></html>`,
+        </body></html>`),
         {
           status: 404,
           headers: { "Content-Type": "text/html; charset=utf-8" },
@@ -147,11 +221,11 @@ const _server = Bun.serve({
     } catch (err) {
       console.error(`Proxy error for lab ${labName}: ${err}`);
       return new Response(
-        `<!DOCTYPE html><html><body style="font-family:monospace;padding:40px;background:#0d0d0d;color:#e0e0e0">
+        injectNav(`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:monospace;padding:40px;background:#0d0d0d;color:#e0e0e0">
           <h2>502 — lab unreachable</h2>
           <p>Lab <code>${labName}</code> is registered but not responding on port ${lab.port}.</p>
           <p><a href="/" style="color:#7eb8f7">← back to index</a></p>
-        </body></html>`,
+        </body></html>`),
         {
           status: 502,
           headers: { "Content-Type": "text/html; charset=utf-8" },
