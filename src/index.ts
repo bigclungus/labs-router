@@ -15,7 +15,24 @@ interface LabManifest {
 // Nav injected into every HTML page served by the router.
 // Uses the EXACT same sitenav.css + sitenav.js as clung.us — loaded directly from the origin.
 // When the clung.us nav changes, labs automatically pick it up with no per-lab edits needed.
+// The override style forces the nav to be position:fixed and full-viewport-width regardless of
+// whatever max-width / margin the host page's body applies.
 const NAV_INJECT = `<link rel="stylesheet" href="https://clung.us/sitenav.css">
+<style>
+/* labs-router nav override: pin nav to top across all body layouts */
+nav.sitenav {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+  z-index: 9999 !important;
+}
+/* push page content below the fixed nav (nav is ~37px tall) */
+body { padding-top: 48px !important; }
+</style>
 <script src="https://clung.us/sitenav.js" defer></script>`;
 
 async function discoverLabs(): Promise<LabManifest[]> {
